@@ -1,0 +1,18 @@
+{
+  "name": "trungpa-dharma-ai",
+  "version": "1.0.0",
+  "description": "Chogyam Trungpa knowledge base with AI chat",
+  "scripts": {
+    "dev": "node server.js",
+    "extract-pdf": "node scripts/extract-pdf.js",
+    "create-embeddings": "node scripts/create-embeddings.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "pdf-parse": "^1.1.1",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5"
+  },
+  "type": "module"
+}
