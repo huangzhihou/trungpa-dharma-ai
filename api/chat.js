@@ -74,9 +74,14 @@ ${context}
 请基于这些资料回答问题，如果资料中没有相关内容，请诚实说明。回答要准确、清晰，尊重原意。`
       : '你是一位佛学知识助手，专门回答关于Chogyam Trungpa喇嘛教法的问题。';
 
-    const response = await axios.post(
-      'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-      {
+    const response = await axios({
+      method: 'post',
+      url: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      data: {
         model: 'glm-4',
         messages: [
           { role: 'system', content: systemPrompt },
@@ -84,14 +89,8 @@ ${context}
         ],
         temperature: 0.7,
         max_tokens: 2000
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        }
       }
-    );
+    });
 
     return response.data.choices[0].message.content;
   } catch (error) {
