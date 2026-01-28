@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import axios from 'axios';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 
@@ -63,7 +62,7 @@ function calculateRelevance(query, text) {
   return score;
 }
 
-// 调用智谱AI API
+// 调用智谱AI API - 使用 fetch
 async function callZhipuAI(messages, context = '') {
   const apiKey = process.env.ZHIPU_API_KEY;
 
@@ -84,35 +83,41 @@ ${context}
 请基于这些资料回答问题，如果资料中没有相关内容，请诚实说明。回答要准确、清晰，尊重原意。`
       : '你是一位佛学知识助手，专门回答关于Chogyam Trungpa喇嘛教法的问题。';
 
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
+    const requestBody = {
+      model: 'glm-4',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...messages
+      ],
+      temperature: 0.7,
+      max_tokens: 2000
     };
 
     console.log('📤 发送请求到智谱 AI...');
 
-    const response = await axios({
-      method: 'post',
-      url: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-      headers: headers,
-      data: {
-        model: 'glm-4',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...messages
-        ],
-        temperature: 0.7,
-        max_tokens: 2000
+    const response = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
       },
-      timeout: 30000
+      body: JSON.stringify(requestBody)
     });
 
+    console.log('📥 响应状态:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ 智谱 AI 错误响应:', errorText);
+      throw new Error(`API 请求失败: ${response.status} ${errorText}`);
+    }
+
+    const data = await response.json();
     console.log('✅ 智谱 AI 响应成功');
-    return response.data.choices[0].message.content;
+
+    return data.choices[0].message.content;
   } catch (error) {
-    console.error('❌ 智谱AI调用错误:');
-    console.error('Error:', error.message);
-    console.error('Response:', error.response?.data);
+    console.error('❌ 智谱AI调用错误:', error.message);
     throw error;
   }
 }
