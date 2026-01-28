@@ -11,9 +11,12 @@ try {
   const mergedFile = path.join(DATA_DIR, 'all-content.json');
   if (fs.existsSync(mergedFile)) {
     allBooks = JSON.parse(fs.readFileSync(mergedFile, 'utf8'));
+    console.log('✅ 数据加载成功:', allBooks.length, '本书');
+  } else {
+    console.error('❌ 数据文件不存在');
   }
 } catch (error) {
-  console.error('加载数据失败:', error.message);
+  console.error('❌ 加载数据失败:', error.message);
 }
 
 // 搜索相关内容
@@ -64,6 +67,13 @@ function calculateRelevance(query, text) {
 async function callZhipuAI(messages, context = '') {
   const apiKey = process.env.ZHIPU_API_KEY;
 
+  if (!apiKey) {
+    console.error('❌ ZHIPU_API_KEY 未设置');
+    throw new Error('API Key 未配置');
+  }
+
+  console.log('🔑 API Key 前缀:', apiKey.substring(0, 10) + '...');
+
   try {
     const systemPrompt = context
       ? `你是一位佛学知识助手，专门回答关于Chogyam Trungpa喇嘛教法的问题。
@@ -74,13 +84,17 @@ ${context}
 请基于这些资料回答问题，如果资料中没有相关内容，请诚实说明。回答要准确、清晰，尊重原意。`
       : '你是一位佛学知识助手，专门回答关于Chogyam Trungpa喇嘛教法的问题。';
 
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    };
+
+    console.log('📤 发送请求到智谱 AI...');
+
     const response = await axios({
       method: 'post',
       url: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
+      headers: headers,
       data: {
         model: 'glm-4',
         messages: [
@@ -89,12 +103,16 @@ ${context}
         ],
         temperature: 0.7,
         max_tokens: 2000
-      }
+      },
+      timeout: 30000
     });
 
+    console.log('✅ 智谱 AI 响应成功');
     return response.data.choices[0].message.content;
   } catch (error) {
-    console.error('智谱AI调用错误:', error.response?.data || error.message);
+    console.error('❌ 智谱AI调用错误:');
+    console.error('Error:', error.message);
+    console.error('Response:', error.response?.data);
     throw error;
   }
 }
@@ -126,8 +144,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '请提供消息' });
     }
 
+    console.log(`\n💬 用户提问: ${message}`);
+
     // 搜索相关内容
     const relevantContent = searchContent(message, 3);
+    console.log(`📚 找到 ${relevantContent.length} 条相关内容`);
 
     // 组合上下文
     let context = '';
@@ -153,7 +174,7 @@ export default async function handler(req, res) {
       sources: relevantContent.map(item => item.book)
     });
   } catch (error) {
-    console.error('聊天错误:', error);
+    console.error('❌ 聊天错误:', error);
     res.status(500).json({
       error: '抱歉，处理您的请求时出错了。请稍后再试。',
       details: error.message
